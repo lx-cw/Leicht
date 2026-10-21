@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Satt & Leicht">
+<title>Satt und Leicht</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: eine ruhige Spalte, Reiter oben (Heute, Rezepte, Einkauf, Fortschritt), Rezepte als aufklappbare Karten */
+:root{
+  --bg:#F3F5F1; --surface:#FFFFFF; --ink:#1E2622; --muted:#5E6B64; --line:#DCE2DB;
+  --accent:#8C2F55; --accent-soft:#F4E3EA; --herb:#3D7A57; --herb-soft:#E1EFE6;
+  --sun:#C98A12; --sun-soft:#FBF0D9;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151A17; --surface:#1E2521; --ink:#E8EEEA; --muted:#9AA8A0; --line:#2F3934;
+  --accent:#E07AA3; --accent-soft:#3A2230; --herb:#7CC79C; --herb-soft:#1F3328;
+  --sun:#E9B54C; --sun-soft:#3A2F17; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#151A17; --surface:#1E2521; --ink:#E8EEEA; --muted:#9AA8A0; --line:#2F3934;
+  --accent:#E07AA3; --accent-soft:#3A2230; --herb:#7CC79C; --herb-soft:#1F3328;
+  --sun:#E9B54C; --sun-soft:#3A2F17; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2rem,6vw,2.8rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.35rem;font-weight:700}
+h3{font-size:1.08rem;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.label{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+header.top{padding-block:28px 12px;display:grid;gap:8px}
+header.top h1 span{color:var(--accent)}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:20px}
+nav.tabs button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+section.panel{display:grid;gap:20px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:14px}
+
+/* Tagesrahmen */
+.rhythm{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative}
+.rhythm div{display:grid;gap:2px;padding-top:16px;position:relative}
+.rhythm div::before{content:"";position:absolute;top:4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--herb)}
+.rhythm::before{content:"";position:absolute;top:8px;left:5px;right:0;height:2px;background:var(--herb-soft)}
+.rhythm b{font-variant-numeric:tabular-nums;font-family:var(--display);font-size:1.15rem}
+.rhythm small{color:var(--muted);font-size:.85rem;line-height:1.3}
+@media (max-width:480px){.rhythm{grid-template-columns:1fr 1fr;row-gap:12px}.rhythm::before{display:none}}
+
+/* Tracker */
+.daybar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.daybar button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;width:40px;height:40px;cursor:pointer;font-size:1.1rem}
+.daybar button:disabled{opacity:.35;cursor:default}
+.daybar .d{text-align:center}
+.daybar .d b{font-family:var(--display);font-size:1.15rem;display:block}
+.habits{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.habit label{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:var(--bg)}
+.habit input{appearance:none;width:24px;height:24px;border:2px solid var(--muted);border-radius:7px;flex:none;display:grid;place-items:center;margin:0;cursor:pointer}
+.habit input:checked{background:var(--herb);border-color:var(--herb)}
+.habit input:checked::after{content:"";width:6px;height:11px;border:solid var(--surface);border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.habit input:checked + span{color:var(--muted)}
+.habit span{min-width:0}
+.habit small{display:block;color:var(--muted);font-size:.82rem}
+.score{display:flex;align-items:baseline;gap:8px}
+.score b{font-family:var(--display);font-size:2rem;font-variant-numeric:tabular-nums}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:8px 0 6px;cursor:pointer;display:grid;gap:4px;justify-items:center}
+.week button[aria-current="date"]{border-color:var(--ink);border-width:2px}
+.week small{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.bar{width:70%;height:34px;background:var(--line);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
+.bar i{display:block;width:100%;background:var(--herb);border-radius:6px 6px 0 0}
+.runs{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.runs i{width:22px;height:22px;border-radius:50%;border:2px solid var(--sun);display:inline-block}
+.runs i.on{background:var(--sun)}
+.hint{background:var(--sun-soft);border-radius:var(--r);padding:16px 18px;display:grid;gap:8px}
+.hint ol{margin:0;padding-left:20px;display:grid;gap:4px}
+
+/* Rezepte */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.cards{display:grid;gap:10px}
+details.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+details.card[open]{border-color:var(--accent)}
+details.card summary{list-style:none;cursor:pointer;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+details.card summary::-webkit-details-marker{display:none}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;grid-column:1}
+.tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--herb-soft);color:var(--herb)}
+.tag.cat{background:var(--accent-soft);color:var(--accent)}
+.card .chev{grid-row:1/span 2;grid-column:2;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;transition:transform .2s;color:var(--muted)}
+details.card[open] .chev{transform:rotate(180deg)}
+.card .body{padding:0 16px 16px;display:grid;gap:14px;border-top:1px solid var(--line);padding-top:14px}
+.ing{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.ing li{display:grid;grid-template-columns:5.5rem 1fr;gap:8px}
+.ing li b{font-variant-numeric:tabular-nums;font-weight:700}
+.steps{margin:0;padding-left:20px;display:grid;gap:6px}
+.tip{background:var(--herb-soft);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:.92rem}
+.btn{font:inherit;font-weight:700;border:0;background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;cursor:pointer;justify-self:start}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.done{background:var(--herb);color:var(--surface)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Einkauf */
+.group{display:grid;gap:6px}
+.shop{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.shop label{display:flex;gap:10px;align-items:center;padding:7px 4px;cursor:pointer;border-bottom:1px dashed var(--line)}
+.shop input{width:18px;height:18px;accent-color:var(--herb);flex:none}
+.shop input:checked + span{text-decoration:line-through;color:var(--muted)}
+.shop .from{font-size:.78rem;color:var(--accent);margin-left:auto;text-align:right}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Fortschritt */
+.weigh{display:flex;gap:8px;flex-wrap:wrap}
+.weigh input{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px;width:9rem}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-variant-numeric:tabular-nums}
+.log li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.log button{font:inherit;font-size:.8rem;border:0;background:none;color:var(--muted);cursor:pointer;text-decoration:underline}
+.big{display:flex;gap:20px;flex-wrap:wrap}
+.big div{display:grid}
+.big b{font-family:var(--display);font-size:2rem;font-variant-numeric:tabular-nums}
+svg.chart{width:100%;height:auto;display:block}
+.status{font-size:.8rem;color:var(--muted)}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="label">Plan für Lea</span>
+    <h1>Satt und <span>leicht</span></h1>
+    <p class="muted">Feste Essenszeiten, Eiweiß in jede Mahlzeit, Lieblingsessen in leichter. Kein Verbot, keine Kur mit Enddatum.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Bereiche">
+    <button role="tab" id="tab-heute" aria-controls="heute" aria-selected="true">Heute</button>
+    <button role="tab" id="tab-rezepte" aria-controls="rezepte" aria-selected="false">Rezepte</button>
+    <button role="tab" id="tab-einkauf" aria-controls="einkauf" aria-selected="false">Einkauf</button>
+    <button role="tab" id="tab-fortschritt" aria-controls="fortschritt" aria-selected="false">Fortschritt</button>
+  </nav>
+
+  <!-- HEUTE -->
+  <section class="panel" id="heute" role="tabpanel" aria-labelledby="tab-heute">
+    <div class="box">
+      <span class="label">Dein Tagesrahmen</span>
+      <div class="rhythm">
+        <div><b>10:00</b><small>Shake mit Banane oder Haferflocken</small></div>
+        <div><b>14:00</b><small>Snackteller oder Skyr-Bowl</small></div>
+        <div><b>16:30</b><small>Kleiner Snack, wenn Hunger</small></div>
+        <div><b>19:00</b><small>Abendessen, Teller-Regel</small></div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="daybar">
+        <button id="prevDay" aria-label="Vorheriger Tag">‹</button>
+        <div class="d"><b id="dayName">Heute</b><span class="muted" id="dayDate"></span></div>
+        <button id="nextDay" aria-label="Nächster Tag">›</button>
+      </div>
+      <ul class="habits" id="habits"></ul>
+      <div class="score"><b id="score">0/7</b><span class="muted" id="scoreText">Gewohnheiten erledigt</span></div>
+    </div>
+
+    <div class="box">
+      <div class="row" style="justify-content:space-between">
+        <span class="label">Diese Woche</span>
+        <span class="muted" id="weekRange"></span>
+      </div>
+      <div class="week" id="week"></div>
+      <div class="row">
+        <span class="muted">Laufen (Ziel 3 bis 4x):</span>
+        <span class="runs" id="runs"></span>
+      </div>
+    </div>
+
+    <div class="hint">
+      <h3>Lust auf Essen außerhalb der Zeiten?</h3>
+      <ol>
+        <li>Ein großes Glas Wasser oder Tee trinken.</li>
+        <li>Ehrlich fragen: Hunger oder Langeweile?</li>
+        <li>10 Minuten etwas anderes machen: kurz raus, Workout, Musik, jemandem schreiben.</li>
+      </ol>
+      <p class="muted">Ist es nach 10 Minuten noch da, ist es echter Hunger. Dann einen Snack aus den Rezepten nehmen.</p>
+    </div>
+  </section>
+
+  <!-- REZEPTE -->
+  <section class="panel" id="rezepte" role="tabpanel" aria-labelledby="tab-rezepte" hidden>
+    <div class="row" style="justify-content:space-between;align-items:end">
+      <div style="display:grid;gap:4px">
+        <h2>Ideen-Sammlung</h2>
+        <p class="muted">Keine festen Tage. Einfach aussuchen, worauf du Lust hast.</p>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="box" style="padding:14px 16px">
+      <p><b>Teller-Regel abends:</b> halber Teller Gemüse oder Salat, ein Viertel Eiweiß, ein Viertel Pasta, Reis oder Kartoffeln.</p>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- EINKAUF -->
+  <section class="panel" id="einkauf" role="tabpanel" aria-labelledby="tab-einkauf" hidden>
+    <div style="display:grid;gap:4px">
+      <h2>Einkaufsliste</h2>
+      <p class="muted">Startet leer. Füg Zutaten über die Rezeptkarten hinzu, tipp eigene Sachen ein oder hol dir den Grundvorrat dazu.</p>
+    </div>
+    <form class="weigh" id="addForm">
+      <input id="addItem" type="text" placeholder="z. B. Tomaten" aria-label="Eigener Eintrag" style="flex:1;min-width:0;width:auto">
+      <button class="btn" type="submit">Hinzufügen</button>
+    </form>
+    <div class="box" id="shopBox"></div>
+    <div class="row">
+      <button class="btn ghost" id="addStaples" type="button">Grundvorrat hinzufügen</button>
+      <button class="btn ghost" id="clearChecked" type="button">Abgehakte entfernen</button>
+      <button class="btn ghost" id="clearAll" type="button">Liste leeren</button>
+    </div>
+  </section>
+
+  <!-- FORTSCHRITT -->
+  <section class="panel" id="fortschritt" role="tabpanel" aria-labelledby="tab-fortschritt" hidden>
+    <div style="display:grid;gap:4px">
+      <h2>Wochen-Check</h2>
+      <p class="muted">Einmal pro Woche wiegen, immer am gleichen Tag, morgens. Tägliches Wiegen schwankt durch Wasser zu stark.</p>
+    </div>
+    <div class="box">
+      <div class="weigh">
+        <input id="kg" type="number" inputmode="decimal" step="0.1" min="30" max="250" placeholder="z. B. 72,4" aria-label="Gewicht in kg">
+        <button class="btn" id="saveKg">Eintragen</button>
+      </div>
+      <div class="big" id="bigStats"></div>
+      <div id="chartWrap"></div>
+      <ul class="log" id="log"></ul>
+    </div>
+    <div class="box">
+      <span class="label">Realistisches Tempo</span>
+      <p>Etwa 0,5 kg pro Woche. Für 10 bis 15 kg heißt das grob 5 bis 7 Monate. Wochen ohne Veränderung sind normal, zählen tut der Trend über einen Monat.</p>
+    </div>
+    <div class="box">
+      <span class="label">Sicherung</span>
+      <p class="muted">Deine Daten liegen nur in diesem Browser auf diesem Gerät. Lade ab und zu eine Sicherung herunter, dann kannst du sie jederzeit wieder einspielen, auch auf einem anderen Gerät.</p>
+      <div class="row">
+        <button class="btn ghost" id="exportBtn" type="button">Sicherung herunterladen</button>
+        <label class="btn ghost" for="importFile" style="display:inline-block">Sicherung einspielen</label>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- Daten ---------- */
+const HABITS=[
+  {id:"fr",t:"Frühstück mit Eiweiß",s:"Shake plus Banane oder Haferflocken"},
+  {id:"mi",t:"Mittag nach Plan",s:"Snackteller, Skyr-Bowl oder Rührei"},
+  {id:"st",t:"Nur zu den Essenszeiten gegessen",s:"Langeweile-Check genutzt"},
+  {id:"te",t:"Teller-Regel beim Abendessen",s:"Halb Gemüse, kein direkter Nachschlag"},
+  {id:"wa",t:"2 Liter getrunken",s:"Wasser, Tee, Schorle 1:3"},
+  {id:"wo",t:"10-Min-Workout",s:"BetterMe Calisthenics"},
+  {id:"la",t:"Laufen",s:"Ziel 3 bis 4x pro Woche"}
+];
+const CATS=[["alle","Alle"],["fruehstueck","Frühstück"],["mittag","Mittag"],["snack","Snack"],["abend","Abendessen"]];
+const CATNAME={fruehstueck:"Frühstück",mittag:"Mittag",snack:"Snack",abend:"Abendessen"};
+const G={obst:"Obst & Gemüse",kuehl:"Kühlregal",vorrat:"Vorrat",tk:"Tiefkühl",sonst:"Sonstiges"};
+const R=[
+ {id:"shake-beere",c:"fruehstueck",n:"Beeren-Vanille-Shake",time:"3 Min",tags:["eiweißreich"],por:"1 Portion",
+  ing:[["1 Messl.","Proteinpulver Vanille","vorrat"],["300 ml","Milch oder Haferdrink","kuehl"],["100 g","TK-Beeren","tk"],["3 EL","zarte Haferflocken","vorrat"]],
+  st:["Alles in den Mixer oder Shaker.","30 Sekunden mixen, fertig."],
+  tip:"Die Haferflocken machen den Unterschied: damit hält der Shake bis mittags."},
+ {id:"shake-kakao",c:"fruehstueck",n:"Kakao-Banane-Shake",time:"3 Min",tags:["eiweißreich"],por:"1 Portion",
+  ing:[["1 Messl.","Proteinpulver Schoko","vorrat"],["300 ml","Milch oder Haferdrink","kuehl"],["1","Banane","obst"],["1 TL","Erdnussmus","vorrat"]],
+  st:["Banane in Stücke brechen.","Mit allem anderen mixen."],
+  tip:"Reife Banane spart jede extra Süße."},
+ {id:"shake-kaffee",c:"fruehstueck",n:"Eiskaffee-Shake",time:"3 Min",tags:["eiweißreich"],por:"1 Portion",
+  ing:[["1 Messl.","Proteinpulver Vanille","vorrat"],["150 ml","kalter Kaffee","vorrat"],["150 ml","Milch","kuehl"],["3 EL","zarte Haferflocken","vorrat"]],
+  st:["Kaffee am Vorabend kochen und kalt stellen.","Alles mit ein paar Eiswürfeln mixen."],
+  tip:"Gut für Tage, an denen du direkt loslegen willst."},
+
+ {id:"teller-klassik",c:"mittag",n:"Snackteller Klassik",time:"5 Min",tags:["kein Kochen","vegetarisch"],por:"1 Portion",
+  ing:[["200 g","Hüttenkäse","kuehl"],["2 Scheiben","Vollkornbrot","vorrat"],["1/2","Gurke","obst"],["1","Paprika","obst"],["2","Möhren","obst"],["etwas","Schnittlauch, Salz, Pfeffer","obst"]],
+  st:["Gemüse in Sticks schneiden.","Hüttenkäse mit Schnittlauch, Salz und Pfeffer würzen.","Alles auf einen Teller, Brot dazu."],
+  tip:"Formel für jeden Teller: 1 Eiweiß + 2 bis 3 Gemüse + 1 bis 2 Scheiben Brot."},
+ {id:"teller-med",c:"mittag",n:"Mediterraner Teller",time:"5 Min",tags:["kein Kochen","vegetarisch"],por:"1 Portion",
+  ing:[["100 g","Hummus","kuehl"],["50 g","Feta","kuehl"],["150 g","Kirschtomaten","obst"],["1/2","Gurke","obst"],["2","Vollkorn-Knäckebrot","vorrat"]],
+  st:["Gemüse schneiden.","Feta zerbröseln, mit Oregano bestreuen.","Mit Hummus und Knäckebrot anrichten."],
+  tip:"Hummus lieber als Dip nutzen als dick aufs Brot streichen."},
+ {id:"teller-skandi",c:"mittag",n:"Skandi-Teller mit Lachs",time:"5 Min",tags:["kein Kochen","Fisch"],por:"1 Portion",
+  ing:[["100 g","Räucherlachs","kuehl"],["2 EL","Frischkäse light","kuehl"],["2","Vollkorn-Knäckebrot","vorrat"],["1/2","Gurke","obst"],["etwas","Dill und Zitrone","obst"]],
+  st:["Knäckebrot mit Frischkäse bestreichen.","Lachs und Gurkenscheiben drauf.","Mit Dill und Zitrone fertig machen."],
+  tip:"Schmeckt ein bisschen nach Sushi, nur ohne Aufwand."},
+ {id:"skyr-bowl",c:"mittag",n:"Skyr-Bowl",time:"3 Min",tags:["kein Kochen","eiweißreich"],por:"1 Portion",
+  ing:[["250 g","Skyr natur","kuehl"],["100 g","Beeren (frisch oder TK)","tk"],["3 EL","Haferflocken","vorrat"],["1 TL","Leinsamen oder Nussmus","vorrat"]],
+  st:["Skyr in eine Schüssel.","Beeren, Haferflocken und Leinsamen darüber."],
+  tip:"TK-Beeren am Vorabend in den Kühlschrank stellen, dann sind sie aufgetaut und saftig."},
+ {id:"ruehrei",c:"mittag",n:"Rührei mit Tomaten",time:"8 Min",tags:["eiweißreich","vegetarisch"],por:"1 Portion",
+  ing:[["3","Eier","kuehl"],["1 Handvoll","Spinat oder Tomaten","obst"],["1 Scheibe","Vollkornbrot","vorrat"],["1 TL","Öl","vorrat"]],
+  st:["Eier verquirlen, salzen.","Spinat oder Tomaten kurz in der Pfanne andünsten.","Eier dazu, bei mittlerer Hitze stocken lassen."],
+  tip:"Das einzige Mittag mit Pfanne, dauert trotzdem keine 10 Minuten."},
+ {id:"wrap",c:"mittag",n:"Schneller Eiweiß-Wrap",time:"5 Min",tags:["kein Kochen"],por:"1 Portion",
+  ing:[["1","Vollkorn-Wrap","vorrat"],["80 g","Hähnchenaufschnitt oder Räuchertofu","kuehl"],["2 EL","Joghurt mit Kräutern","kuehl"],["1 Handvoll","Salat, Gurke, Paprika","obst"]],
+  st:["Wrap mit Joghurt bestreichen.","Belegen, fest einrollen, halbieren."],
+  tip:"Gut zum Mitnehmen, falls du mittags unterwegs bist."},
+
+ {id:"apfel-dip",c:"snack",n:"Apfel mit Zimt-Skyr",time:"2 Min",tags:["süß"],por:"1 Portion",
+  ing:[["1","Apfel","obst"],["100 g","Skyr","kuehl"],["1 Prise","Zimt","vorrat"]],
+  st:["Apfel in Spalten schneiden.","Skyr mit Zimt verrühren und dippen."],tip:"Hilft gut gegen den Süßhunger am Nachmittag."},
+ {id:"hummus-sticks",c:"snack",n:"Gemüsesticks mit Hummus",time:"3 Min",tags:["herzhaft","vegan"],por:"1 Portion",
+  ing:[["2","Möhren","obst"],["1/2","Kohlrabi oder Paprika","obst"],["3 EL","Hummus","kuehl"]],
+  st:["Gemüse in Sticks schneiden.","Mit Hummus dippen."],tip:"Sticks für 2 bis 3 Tage vorschneiden und in einer Dose mit etwas Wasser lagern."},
+ {id:"edamame",c:"snack",n:"Edamame mit Salz",time:"5 Min",tags:["herzhaft","vegan","eiweißreich"],por:"1 Portion",
+  ing:[["150 g","TK-Edamame in der Schote","tk"],["etwas","grobes Salz","vorrat"]],
+  st:["Edamame 4 Minuten kochen oder in die Mikrowelle.","Salzen und aus der Schote knabbern."],tip:"Der Sushi-Snack. Das Pulen dauert, gut gegen schnelles Nebenbei-Essen."},
+ {id:"schoko-quark",c:"snack",n:"Schoko-Quark",time:"2 Min",tags:["süß","eiweißreich"],por:"1 Portion",
+  ing:[["150 g","Magerquark","kuehl"],["1 TL","Kakao (ungesüßt)","vorrat"],["etwas","Milch","kuehl"],["nach Wunsch","etwas Honig","vorrat"]],
+  st:["Quark mit Kakao und einem Schuss Milch cremig rühren.","Nach Geschmack süßen."],tip:"Wie Pudding, mit viel mehr Eiweiß."},
+
+ {id:"bolo",c:"abend",n:"Linsen-Gemüse-Bolognese",time:"30 Min",tags:["Pasta","vegetarisch"],por:"4 Portionen",
+  ing:[["250 g","Vollkorn-Spaghetti","vorrat"],["150 g","rote Linsen","vorrat"],["1","Zwiebel","obst"],["2","Möhren","obst"],["1","Zucchini","obst"],["2 Dosen","gehackte Tomaten","vorrat"],["etwas","Parmesan","kuehl"]],
+  st:["Zwiebel, Möhren und Zucchini fein würfeln und anbraten.","Linsen, Tomaten und 300 ml Wasser dazu, 15 Minuten köcheln.","Würzen mit Oregano, Salz, Pfeffer.","Pasta kochen, pro Person eher wenig Nudeln, viel Sauce."],
+  tip:"Für die Eltern geht auch halb Hackfleisch, halb Linsen. Fällt kaum auf."},
+ {id:"garnelen",c:"abend",n:"Garnelen-Zucchini-Pasta",time:"20 Min",tags:["Pasta","Fisch"],por:"4 Portionen",
+  ing:[["250 g","Pasta","vorrat"],["400 g","Garnelen (TK)","tk"],["2","Zucchini","obst"],["250 g","Kirschtomaten","obst"],["2","Knoblauchzehen","obst"],["1","Zitrone","obst"]],
+  st:["Pasta kochen.","Garnelen mit Knoblauch scharf anbraten, rausnehmen.","Zucchini und Tomaten in der Pfanne garen.","Alles mischen, mit Zitrone und Chili abschmecken."],
+  tip:"Zucchini in dünne Streifen hobeln: so wirkt die Portion Pasta größer."},
+ {id:"sushi-bowl",c:"abend",n:"Sushi-Bowl",time:"25 Min",tags:["Sushi","Fisch"],por:"4 Portionen",
+  ing:[["250 g","Sushi-Reis","vorrat"],["400 g","Lachs (oder Tofu)","kuehl"],["1","Gurke","obst"],["300 g","TK-Edamame ohne Schote","tk"],["1","Avocado","obst"],["4 EL","Sojasauce","vorrat"],["etwas","Sesam, Nori","vorrat"]],
+  st:["Reis kochen, mit etwas Reisessig würzen.","Lachs würfeln, mit Sojasauce marinieren oder kurz anbraten.","Gurke, Avocado, Edamame schneiden.","Bowls bauen: unten wenig Reis, oben viel."],
+  tip:"Jeder baut seine Bowl selbst, gut für den Familientisch."},
+ {id:"ofengemuese",c:"abend",n:"Ofengemüse mit Lachs",time:"35 Min",tags:["Fisch","ein Blech"],por:"4 Portionen",
+  ing:[["4","Lachsfilets","kuehl"],["600 g","Kartoffeln","obst"],["2","Paprika","obst"],["1","Brokkoli","obst"],["1","rote Zwiebel","obst"],["2 EL","Olivenöl","vorrat"]],
+  st:["Kartoffeln vierteln, mit Öl und Salz 15 Min bei 200 °C backen.","Restliches Gemüse dazu, 10 Min weiter.","Lachs obendrauf, nochmal 12 Min."],
+  tip:"Vegetarisch: Lachs gegen Halloumi tauschen, die letzten 10 Minuten dazu."},
+ {id:"chili",c:"abend",n:"Chili sin Carne",time:"35 Min",tags:["vegan","Meal Prep"],por:"4 Portionen",
+  ing:[["1 Dose","Kidneybohnen","vorrat"],["1 Dose","Mais","vorrat"],["100 g","rote Linsen","vorrat"],["2","Paprika","obst"],["1","Zwiebel","obst"],["2 Dosen","gehackte Tomaten","vorrat"],["etwas","Joghurt zum Servieren","kuehl"]],
+  st:["Zwiebel und Paprika anbraten.","Linsen, Tomaten, 200 ml Wasser, Chili, Kreuzkümmel dazu, 15 Min köcheln.","Bohnen und Mais rein, 5 Min ziehen lassen.","Mit einem Klecks Joghurt servieren."],
+  tip:"Macht sehr satt. Reste sind am nächsten Tag ein gutes Mittagessen."},
+ {id:"curry",c:"abend",n:"Kichererbsen-Curry",time:"25 Min",tags:["vegan"],por:"4 Portionen",
+  ing:[["2 Dosen","Kichererbsen","vorrat"],["1 Dose","leichte Kokosmilch","vorrat"],["200 g","Spinat","obst"],["1","Zwiebel","obst"],["2 EL","Currypaste","vorrat"],["200 g","Basmatireis","vorrat"]],
+  st:["Zwiebel anbraten, Currypaste kurz mitrösten.","Kichererbsen, Kokosmilch, 1 Dose Tomaten oder Wasser dazu, 10 Min köcheln.","Spinat unterrühren.","Mit wenig Reis servieren."],
+  tip:"Leichte Kokosmilch spart viel, schmeckt aber fast gleich."},
+ {id:"frittata",c:"abend",n:"Gemüse-Frittata mit Salat",time:"25 Min",tags:["vegetarisch","eiweißreich"],por:"4 Portionen",
+  ing:[["8","Eier","kuehl"],["1","Zucchini","obst"],["1","Paprika","obst"],["100 g","Feta","kuehl"],["1","Salatkopf","obst"]],
+  st:["Gemüse würfeln, in einer ofenfesten Pfanne anbraten.","Verquirlte Eier drüber, Feta drauf.","Bei 180 °C 12 Min im Ofen stocken lassen.","Mit großem Salat servieren."],
+  tip:"Kalt am nächsten Tag ein super Mittagessen."},
+ {id:"ofenkartoffel",c:"abend",n:"Ofenkartoffel mit Kräuterquark",time:"45 Min",tags:["vegetarisch","Klassiker"],por:"4 Portionen",
+  ing:[["4","große Kartoffeln","obst"],["500 g","Magerquark","kuehl"],["etwas","Kräuter, Knoblauch","obst"],["1","Gurke","obst"],["1","Salatkopf","obst"]],
+  st:["Kartoffeln einstechen, 45 Min bei 200 °C backen.","Quark mit Kräutern, Knoblauch, Salz und etwas Milch cremig rühren.","Mit Gurkensalat servieren."],
+  tip:"Magerquark statt Kräuterbutter: gleicher Genuss, viel leichter."}
+];
+const STAPLES=[
+ ["Proteinpulver","vorrat"],["Haferflocken","vorrat"],["Vollkornbrot","vorrat"],["Vollkorn-Knäckebrot","vorrat"],["Leinsamen","vorrat"],
+ ["Skyr natur","kuehl"],["Magerquark","kuehl"],["Hüttenkäse","kuehl"],["Hummus","kuehl"],["Eier","kuehl"],["Milch oder Haferdrink","kuehl"],
+ ["Bananen","obst"],["Äpfel","obst"],["Gurke","obst"],["Paprika","obst"],["Möhren","obst"],["Kirschtomaten","obst"],
+ ["TK-Beeren","tk"],["TK-Edamame","tk"]
+];
+
+/* ---------- Zustand und Speicher ---------- */
+const LS="sattleicht-v1";
+let S={v:1,days:{},weights:[],shop:{},extra:[]};
+function lsGet(){try{const x=localStorage.getItem(LS);return x?JSON.parse(x):null}catch(e){return null}}
+function lsSet(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+const cached=lsGet(); if(cached&&cached.v===1) S=Object.assign(S,cached);
+
+const statusEl=()=>document.getElementById("status");
+function setStatus(t){const el=statusEl(); if(el) el.textContent=t;}
+let storageOk=true;
+try{localStorage.setItem("sl-test","1");localStorage.removeItem("sl-test");}catch(e){storageOk=false;}
+function save(){lsSet();}
+
+/* ---------- Datum ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const key=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today=()=>{const d=new Date();d.setHours(12,0,0,0);return d};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WDL=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const fmt=d=>d.toLocaleDateString("de-DE",{day:"numeric",month:"long"});
+let sel=today();
+function mondayOf(d){const x=new Date(d);const wd=(x.getDay()+6)%7;return addDays(x,-wd);}
+function dayData(k){return (S.days[k]&&S.days[k].h)||{};}
+
+/* ---------- Heute ---------- */
+function renderToday(){
+  const k=key(sel), t=key(today());
+  document.getElementById("dayName").textContent = k===t?"Heute":(k===key(addDays(today(),-1))?"Gestern":WDL[sel.getDay()]);
+  document.getElementById("dayDate").textContent = WDL[sel.getDay()]+", "+fmt(sel);
+  document.getElementById("nextDay").disabled = k>=t;
+  const h=dayData(k);
+  const ul=document.getElementById("habits"); ul.innerHTML="";
+  HABITS.forEach(x=>{
+    const li=document.createElement("li"); li.className="habit";
+    li.innerHTML='<label><input type="checkbox" id="h-'+x.id+'"><span>'+x.t+'<small>'+x.s+'</small></span></label>';
+    const cb=li.querySelector("input"); cb.checked=!!h[x.id];
+    cb.addEventListener("change",()=>{
+      const d=S.days[k]||(S.days[k]={h:{}}); if(cb.checked) d.h[x.id]=true; else delete d.h[x.id];
+      if(!Object.keys(d.h).length) delete S.days[k];
+      save(); renderScore(); renderWeek();
+    });
+    ul.appendChild(li);
+  });
+  renderScore(); renderWeek();
+}
+function renderScore(){
+  const n=Object.keys(dayData(key(sel))).length;
+  document.getElementById("score").textContent=n+"/"+HABITS.length;
+  document.getElementById("scoreText").textContent = n===HABITS.length?"Perfekter Tag.":n>=5?"Richtig guter Tag.":n>=3?"Solide, weiter so.":"Gewohnheiten erledigt";
+}
+function renderWeek(){
+  const mon=mondayOf(sel), wk=document.getElementById("week"); wk.innerHTML="";
+  let runs=0; const t=key(today());
+  for(let i=0;i<7;i++){
+    const d=addDays(mon,i), k=key(d), h=dayData(k), n=Object.keys(h).length;
+    if(h.la) runs++;
+    const b=document.createElement("button");
+    b.setAttribute("aria-label",WDL[d.getDay()]+", "+n+" von "+HABITS.length);
+    if(k===key(sel)) b.setAttribute("aria-current","date");
+    b.disabled = k>t;
+    b.innerHTML='<small>'+WD[d.getDay()]+'</small><span class="bar"><i style="height:'+Math.round(n/HABITS.length*100)+'%"></i></span><small>'+d.getDate()+'</small>';
+    b.addEventListener("click",()=>{sel=d;renderToday();});
+    wk.appendChild(b);
+  }
+  document.getElementById("weekRange").textContent=fmt(mon)+" bis "+fmt(addDays(mon,6));
+  const r=document.getElementById("runs"); r.innerHTML="";
+  for(let i=0;i<4;i++){const s=document.createElement("i");if(i<runs)s.className="on";r.appendChild(s);}
+  const lbl=document.createElement("span");lbl.className="muted";lbl.textContent=runs+" Läufe";r.appendChild(lbl);
+}
+document.getElementById("prevDay").addEventListener("click",()=>{sel=addDays(sel,-1);renderToday();});
+document.getElementById("nextDay").addEventListener("click",()=>{if(key(sel)<key(today())){sel=addDays(sel,1);renderToday();}});
+
+/* ---------- Rezepte ---------- */
+let cat="alle";
+function renderChips(){
+  const c=document.getElementById("chips"); c.innerHTML="";
+  CATS.forEach(([id,n])=>{
+    const b=document.createElement("button"); b.textContent=n; b.setAttribute("aria-pressed",id===cat?"true":"false");
+    b.addEventListener("click",()=>{cat=id;renderChips();renderCards();}); c.appendChild(b);
+  });
+}
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+function inList(r){return r.ing.every(i=>S.extra.some(e=>e.n===i[1]));}
+function renderCards(){
+  const wrap=document.getElementById("cards"); wrap.innerHTML="";
+  R.filter(r=>cat==="alle"||r.c===cat).forEach(r=>{
+    const d=document.createElement("details"); d.className="card"; d.id="r-"+r.id;
+    d.innerHTML='<summary><h3>'+esc(r.n)+'</h3><span class="chev" aria-hidden="true">⌄</span>'+
+      '<div class="meta"><span class="tag cat">'+CATNAME[r.c]+'</span><span class="tag">'+r.time+'</span>'+r.tags.map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div></summary>'+
+      '<div class="body"><div class="group"><span class="label">Zutaten, '+r.por+'</span><ul class="ing">'+r.ing.map(i=>'<li><b>'+esc(i[0])+'</b><span>'+esc(i[1])+'</span></li>').join("")+'</ul></div>'+
+      '<div class="group"><span class="label">So geht\'s</span><ol class="steps">'+r.st.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ol></div>'+
+      '<p class="tip">'+esc(r.tip)+'</p><button class="btn" type="button"></button></div>';
+    const b=d.querySelector(".btn");
+    const upd=()=>{const on=inList(r);b.textContent=on?"Steht auf der Einkaufsliste":"Auf die Einkaufsliste";b.className="btn"+(on?" done":"");};
+    upd();
+    b.addEventListener("click",()=>{
+      if(inList(r)){S.extra=S.extra.filter(e=>e.from!==r.n);}
+      else r.ing.forEach(i=>{if(!S.extra.some(e=>e.n===i[1])) S.extra.push({n:i[1],g:i[2],from:r.n,a:i[0]});});
+      save(); upd(); renderShop();
+    });
+    wrap.appendChild(d);
+  });
+}
+
+/* ---------- Einkauf ---------- */
+function renderShop(){
+  const box=document.getElementById("shopBox"); box.innerHTML="";
+  if(!S.extra.length){box.innerHTML='<p class="muted">Deine Liste ist leer. Öffne ein Rezept und tippe auf "Auf die Einkaufsliste", oder trag oben etwas ein.</p>';return;}
+  Object.keys(G).forEach(g=>{
+    const items=S.extra.filter(e=>(G[e.g]?e.g:"sonst")===g).map(e=>({k:"e:"+e.n,n:e.n,from:e.from,a:e.a}));
+    if(!items.length) return;
+    const grp=document.createElement("div"); grp.className="group";
+    grp.innerHTML='<span class="label">'+G[g]+'</span>';
+    const ul=document.createElement("ul"); ul.className="shop";
+    items.forEach(it=>{
+      const li=document.createElement("li");
+      li.innerHTML='<label><input type="checkbox"><span>'+esc(it.n)+(it.a?' <span class="muted">('+esc(it.a)+')</span>':'')+'</span>'+(it.from?'<span class="from">'+esc(it.from)+'</span>':'')+'</label>';
+      const cb=li.querySelector("input"); cb.id="shop-"+it.k.replace(/[^a-z0-9]/gi,"_"); cb.checked=!!S.shop[it.k];
+      cb.addEventListener("change",()=>{if(cb.checked)S.shop[it.k]=true;else delete S.shop[it.k];save();});
+      ul.appendChild(li);
+    });
+    grp.appendChild(ul); box.appendChild(grp);
+  });
+}
+document.getElementById("clearChecked").addEventListener("click",()=>{
+  S.extra=S.extra.filter(e=>!S.shop["e:"+e.n]); S.shop={}; save(); renderShop(); renderCards();
+});
+document.getElementById("addStaples").addEventListener("click",ev=>{
+  const b=ev.currentTarget; let n=0;
+  STAPLES.forEach(s=>{if(!S.extra.some(e=>e.n===s[0])){S.extra.push({n:s[0],g:s[1],from:"Grundvorrat"});n++;}});
+  save(); renderShop();
+  b.textContent=n?n+" Sachen hinzugefügt":"Schon alles auf der Liste";
+  setTimeout(()=>{b.textContent="Grundvorrat hinzufügen";},2500);
+  document.getElementById("shopBox").scrollIntoView({behavior:"smooth",block:"start"});
+});
+document.getElementById("addForm").addEventListener("submit",ev=>{
+  ev.preventDefault(); const inp=document.getElementById("addItem"); const n=inp.value.trim();
+  if(n&&!S.extra.some(e=>e.n.toLowerCase()===n.toLowerCase())){S.extra.push({n,g:"sonst"});save();renderShop();}
+  inp.value="";
+});
+let clearArmed=null;
+document.getElementById("clearAll").addEventListener("click",ev=>{
+  const b=ev.currentTarget;
+  if(!clearArmed){b.textContent="Wirklich leeren?";clearArmed=setTimeout(()=>{b.textContent="Liste leeren";clearArmed=null;},3000);return;}
+  clearTimeout(clearArmed);clearArmed=null;b.textContent="Liste leeren";
+  S.extra=[];S.shop={};save();renderShop();renderCards();
+});
+
+/* ---------- Fortschritt ---------- */
+const num=v=>v.toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1});
+function renderWeights(){
+  const W=S.weights.slice().sort((a,b)=>a.d<b.d?-1:1);
+  const big=document.getElementById("bigStats"), log=document.getElementById("log"), cw=document.getElementById("chartWrap");
+  log.innerHTML=""; cw.innerHTML="";
+  if(!W.length){big.innerHTML='<p class="muted">Noch kein Eintrag. Trag dein Startgewicht ein, dann siehst du hier deinen Verlauf.</p>';return;}
+  const first=W[0].kg, last=W[W.length-1].kg, diff=last-first;
+  big.innerHTML='<div><span class="label">Start</span><b>'+num(first)+'</b></div><div><span class="label">Aktuell</span><b>'+num(last)+'</b></div><div><span class="label">Veränderung</span><b style="color:'+(diff<=0?'var(--herb)':'var(--ink)')+'">'+(diff>0?"+":"")+num(diff)+'</b></div>';
+  if(W.length>1){
+    const w=600,h=180,pl=44,pr=16,pt=14,pb=28;
+    let mn=Math.min(...W.map(x=>x.kg)),mx=Math.max(...W.map(x=>x.kg));
+    mn=Math.floor(mn-1);mx=Math.ceil(mx+1);
+    const X=i=>pl+(w-pl-pr)*(i/(W.length-1)), Y=v=>pt+(h-pt-pb)*(1-(v-mn)/(mx-mn));
+    let grid="";const step=Math.max(1,Math.round((mx-mn)/4));
+    for(let v=mn;v<=mx;v+=step){grid+='<line x1="'+pl+'" x2="'+(w-pr)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--line)"/><text x="'+(pl-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="12" fill="var(--muted)">'+v+'</text>';}
+    const pts=W.map((x,i)=>X(i)+","+Y(x.kg)).join(" ");
+    const area="M"+X(0)+","+(h-pb)+" L"+W.map((x,i)=>X(i)+","+Y(x.kg)).join(" L")+" L"+X(W.length-1)+","+(h-pb)+" Z";
+    const lab=[0,W.length-1].map(i=>{const p=W[i].d.split("-");return '<text x="'+X(i)+'" y="'+(h-8)+'" text-anchor="'+(i?"end":"start")+'" font-size="12" fill="var(--muted)">'+(+p[2])+'.'+(+p[1])+'.</text>';}).join("");
+    cw.innerHTML='<svg class="chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Gewichtsverlauf in kg">'+grid+
+      '<path d="'+area+'" fill="var(--herb-soft)"/><polyline points="'+pts+'" fill="none" stroke="var(--herb)" stroke-width="2.5" stroke-linejoin="round"/>'+
+      W.map((x,i)=>'<circle cx="'+X(i)+'" cy="'+Y(x.kg)+'" r="'+(i===W.length-1?5:3)+'" fill="var(--herb)"/>').join("")+lab+'</svg>';
+  }
+  W.slice().reverse().forEach(x=>{
+    const li=document.createElement("li");const p=x.d.split("-");
+    li.innerHTML='<span>'+(+p[2])+'.'+(+p[1])+'.'+p[0]+'</span><span><b>'+num(x.kg)+' kg</b> <button type="button">entfernen</button></span>';
+    li.querySelector("button").addEventListener("click",()=>{S.weights=S.weights.filter(y=>y.d!==x.d);save();renderWeights();});
+    log.appendChild(li);
+  });
+}
+document.getElementById("saveKg").addEventListener("click",()=>{
+  const inp=document.getElementById("kg"); const v=parseFloat(String(inp.value).replace(",","."));
+  if(!(v>=30&&v<=250)){inp.focus();return;}
+  const d=key(today()); S.weights=S.weights.filter(x=>x.d!==d); S.weights.push({d,kg:Math.round(v*10)/10});
+  inp.value=""; save(); renderWeights();
+});
+
+/* ---------- Reiter ---------- */
+const TABS=["heute","rezepte","einkauf","fortschritt"];
+function show(t){
+  if(!TABS.includes(t)) t="heute";
+  TABS.forEach(x=>{document.getElementById(x).hidden=x!==t;document.getElementById("tab-"+x).setAttribute("aria-selected",x===t?"true":"false");});
+  try{sessionStorage.setItem("sl-tab",t)}catch(e){}
+}
+TABS.forEach(x=>document.getElementById("tab-"+x).addEventListener("click",()=>show(x)));
+
+function renderAll(){renderToday();renderChips();renderCards();renderShop();renderWeights();}
+renderAll();
+let start=(location.hash||"").slice(1); if(!start){try{start=sessionStorage.getItem("sl-tab")||""}catch(e){}}
+show(start||"heute");
+setStatus(storageOk?"Wird automatisch in diesem Browser gespeichert.":"Speichern ist in diesem Browser gerade blockiert (z. B. privates Fenster).");
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="satt-und-leicht-sicherung-"+key(today())+".json";
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+});
+document.getElementById("importFile").addEventListener("change",ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result); if(!d||d.v!==1) throw 0;
+    S=Object.assign({v:1,days:{},weights:[],shop:{},extra:[]},d); save(); renderAll(); setStatus("Sicherung eingespielt.");}
+    catch(e){setStatus("Diese Datei ist keine Sicherung von Satt und Leicht.");}
+    ev.target.value="";};
+  r.readAsText(f);
+});
+})();
+</script>
+</body>
+</html>
